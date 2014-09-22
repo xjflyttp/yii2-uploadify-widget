@@ -173,6 +173,12 @@ class UploadAction extends \yii\base\Action {
         $filename = $this->getSaveFileNameWithNotExist();
         $basePath = $this->uploadBasePath;
         $fullFilename = $basePath . DIRECTORY_SEPARATOR . $filename;
+        $dirPath = dirname($fullFilename);
+        if (false === is_dir($dirPath)){
+        	if (false === mkdir($dirPath,0755, true)) {
+        		throw new Exception('mkdir fail: ' . $dirPath);
+        	}
+        }
         $result = $this->_uploadFileInstance->saveAs($fullFilename);
         if (!$result) {
             throw new Exception('save file fail');
