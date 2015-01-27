@@ -101,14 +101,14 @@ class UploadAction extends Action {
      * image/yyyymmdd/xxx.jpg
      * @var string 
      */
-    private $_filename;
+    public $saveFilename;
 
     /**
      * saved format filename full path
      * /var/www/htdocs/image/yyyymmdd/xxx.jpg
      * @var string
      */
-    private $_fullFilename;
+    public $saveFullFilename;
 
     /**
      * throw yii\base\Exception will break
@@ -209,15 +209,15 @@ class UploadAction extends Action {
             throw new Exception('save file fail');
         }
 
-        $this->_filename = $filename;
-        $this->_fullFilename = $fullFilename;
+        $this->saveFilename = $filename;
+        $this->saveFullFilename = $fullFilename;
     }
 
     /**
      * output fileUrl
      */
     private function processOutput() {
-        $this->output['fileUrl'] = $this->uploadBaseUrl . '/' . $this->_filename;
+        $this->output['fileUrl'] = $this->uploadBaseUrl . '/' . $this->saveFilename;
     }
 
     /**
