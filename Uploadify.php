@@ -52,7 +52,7 @@ class Uploadify extends InputWidget {
      * @see http://www.uploadify.com/documentation/
      */
     public $jsOptions = [];
-    
+
     /**
      * uploadify javascript event list
      * @var []
@@ -69,6 +69,12 @@ class Uploadify extends InputWidget {
      * Initializes the widget.
      */
     public function init() {
+
+        Yii::$app->request->enableCsrfValidation = $this->csrf;
+        if ($this->csrf) {
+            Yii::$app->request->enableCsrfCookie = false;
+        }
+
         //init var
         if (empty($this->url)) {
             $this->url = \yii\helpers\Url::to('index');
@@ -133,16 +139,14 @@ class Uploadify extends InputWidget {
      * @return void
      */
     private function initUploadifyCsrfOption(&$jsOptions) {
+        $request = Yii::$app->request;
+        $csrfName = $request->csrfParam;
+        $csrfValue = $request->csrfToken;
+
         $session = Yii::$app->session;
         $session->open();
         $sessionIdName = $session->getName();
         $sessionIdValue = $session->getId();
-
-        $request = Yii::$app->request;
-        $csrfName = $request->csrfParam;
-        $csrfValue = $request->getCsrfToken();
-        $session->set($csrfName, $csrfValue);
-
         $jsOptions['formData'] = [
             $sessionIdName => $sessionIdValue,
             $csrfName => $csrfValue,

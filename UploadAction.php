@@ -3,7 +3,7 @@
 namespace xj\uploadify;
 
 use Yii;
-use yii\helpers\Json;
+use yii\base\Action;
 use yii\validators\FileValidator;
 use yii\web\UploadedFile;
 use yii\base\Exception;
@@ -12,43 +12,54 @@ use yii\base\Exception;
  * Uploadify Widget Action
  * @author xjflyttp <xjflyttp@gmail.com>
  * @example
-    Html::fileInput('test', NULL, ['id' => 'test']);
-    Uploadify::widget([
-        'url' => yii\helpers\Url::to(['s-upload']),
-        'id' => 'test',
-        'model' => $model,
-        'renderTag' => false,
-        'jsOptions' => [
-            'width' => 120,
-            'height' => 40,
-            'onUploadError' => "function(file, errorCode, errorMsg, errorString) {
-            console.log('The file ' + file.name + ' could not be uploaded: ' + errorString + errorCode + errorMsg);
-        }",
-            'onUploadSuccess' => "function(file, data, response) {
-            console.log('The file ' + file.name + ' was successfully uploaded with a response of ' + response + ':' + data);
-        }"
-        ]
-    ]);
+  Html::fileInput('test', NULL, ['id' => 'test']);
+  Uploadify::widget([
+  'url' => yii\helpers\Url::to(['s-upload']),
+  'id' => 'test',
+  'model' => $model,
+  'renderTag' => false,
+  'jsOptions' => [
+  'width' => 120,
+  'height' => 40,
+  'onUploadError' => "function(file, errorCode, errorMsg, errorString) {
+  console.log('The file ' + file.name + ' could not be uploaded: ' + errorString + errorCode + errorMsg);
+  }",
+  'onUploadSuccess' => "function(file, data, response) {
+  console.log('The file ' + file.name + ' was successfully uploaded with a response of ' + response + ':' + data);
+  }"
+  ]
+  ]);
  */
-class UploadAction extends \yii\base\Action {
+class UploadAction extends Action {
+
+    /**
+     * The length of the CSRF token mask.
+     */
+    const CSRF_MASK_LENGTH = 8;
 
     /**
      * save path
      * @var string 
      */
-    public $uploadBasePath = '@frontend/web/upload';
+    public $uploadBasePath = '@webroot/upload';
 
     /**
      * web url
      * @var string 
      */
-    public $uploadBaseUrl = '/web/upload';
+    public $uploadBaseUrl = '@web/upload';
 
     /**
      * Csrf Verify Enable
      * @var bool
      */
     public $csrf = true;
+
+    /**
+     *  $this->output['fileUrl'] = $this->uploadBaseUrl . '/' . $this->_filename;
+     * @var bool
+     */
+    public $autoOutput = true;
 
     /**
      *
@@ -127,21 +138,28 @@ class UploadAction extends \yii\base\Action {
      */
     public $afterSave;
 
-    public function init() {
-        //csrf状态
-        Yii::$app->request->enableCsrfValidation = false;
+    /**
+     * output
+     * @var []
+     */
+    public $output = ['error' => false];
 
-        //verify csrf in session
-        if ($this->csrf && !$this->verifyCsrf()) {
-            throw new \yii\web\BadRequestHttpException('csrf verify fail.');
-        }
+    public function init() {
+        //csrf
+        $this->initCsrf();
 
         //upload instance
         $this->_uploadFileInstance = UploadedFile::getInstanceByName('Filedata');
 
         //upload base path
+        if (empty($this->uploadBasePath)) {
+            throw new Exception('uploadBasePath not exist');
+        }
         $this->uploadBasePath = Yii::getAlias($this->uploadBasePath);
-
+        //upload web url
+        if (!empty($this->uploadBaseUrl)) {
+            $this->uploadBaseUrl = Yii::getAlias($this->uploadBaseUrl);
+        }
         return parent::init();
     }
 
@@ -161,23 +179,30 @@ class UploadAction extends \yii\base\Action {
                 call_user_func($this->beforeSave, $this);
             }
             $this->save();
+            //auto output
+            if (true === $this->autoOutput) {
+                $this->processOutput();
+            }
             if ($this->afterSave !== null) {
-                call_user_func($this->afterSave, $this->_filename, $this->_fullFilename, $this);
+                call_user_func($this->afterSave, $this);
             }
         } catch (Exception $e) {
-            return $e->getMessage();
+            $this->output['error'] = true;
+            $this->output['msg'] = $e->getMessage();
         }
+        Yii::$app->response->format = 'json';
+        return $this->output;
     }
 
     private function save() {
         $filename = $this->getSaveFileNameWithNotExist();
         $basePath = $this->uploadBasePath;
-        $fullFilename = $basePath . DIRECTORY_SEPARATOR . $filename;
+        $fullFilename = $basePath . '/' . $filename;
         $dirPath = dirname($fullFilename);
-        if (false === is_dir($dirPath)){
-        	if (false === mkdir($dirPath,0755, true)) {
-        		throw new Exception('mkdir fail: ' . $dirPath);
-        	}
+        if (false === is_dir($dirPath)) {
+            if (false === mkdir($dirPath, 0755, true)) {
+                throw new Exception('mkdir fail: ' . $dirPath);
+            }
         }
         $result = $this->_uploadFileInstance->saveAs($fullFilename);
         if (!$result) {
@@ -186,6 +211,13 @@ class UploadAction extends \yii\base\Action {
 
         $this->_filename = $filename;
         $this->_fullFilename = $fullFilename;
+    }
+
+    /**
+     * output fileUrl
+     */
+    private function processOutput() {
+        $this->output['fileUrl'] = $this->uploadBaseUrl . '/' . $this->_filename;
     }
 
     /**
@@ -254,28 +286,29 @@ class UploadAction extends \yii\base\Action {
         }
     }
 
-    /**
-     * verify csrf token
-     * @return boolean
-     */
-    private function verifyCsrf() {
-        $session = Yii::$app->session;
-        $sessionIdName = $session->getName();
-
-        $request = Yii::$app->request;
-        $csrfName = $request->csrfParam;
-
-        $postSessionIdValue = $request->post($sessionIdName);
-        $postCsrfValue = $request->post($csrfName);
-        if ($postCsrfValue === null || $postSessionIdValue === null) {
-            return false;
+    private function initCsrf() {
+        //verify csrf in session
+        if (false === $this->csrf) {
+            Yii::$app->request->enableCsrfValidation = false;
+            return;
         }
+        Yii::$app->request->enableCsrfValidation = false;
+        Yii::$app->request->enableCsrfCookie = false;
 
-        $session->setId($postSessionIdValue);
+        $session = Yii::$app->session;
+        $request = Yii::$app->request;
+//        $csrfTokenName = $request->csrfParam;
         $session->open();
-        $trueCsrfValue = $session->get($csrfName);
-
-        return $trueCsrfValue === $postCsrfValue ? true : false;
+        $sessionName = $session->getName();
+        $postSessionId = $request->post($sessionName);
+        $currentSessionId = $session->getId();
+        if ($currentSessionId != $postSessionId) {
+            $session->destroy();
+        }
+        $session->setId($postSessionId);
+        $session->open();
+        $request->enableCsrfValidation = true;
+        $request->validateCsrfToken();
     }
 
 }

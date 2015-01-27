@@ -58,8 +58,8 @@ public function actions() {
     return [
         's-upload' => [
             'class' => \xj\uploadify\UploadAction::className(),
-            'uploadBasePath' => '@frontend/web/upload', //file system path
-            'uploadBaseUrl' => \common\helpers\Url::getWebUrlFrontend('upload'), //web path
+            'uploadBasePath' => '@webroot/upload', //file system path
+            'uploadBaseUrl' => '@web/upload', //web path
             'csrf' => true,
             'format' => 'image/{yyyy}{mm}{dd}/{time}{rand:6}', //save format
             'validateOptions' => [
