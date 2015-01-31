@@ -167,7 +167,7 @@ class Uploadify extends InputWidget {
     private function registerScripts() {
         $jsonOptions = Json::encode($this->jsOptions);
         $script = <<<EOF
-$('#{$this->id}').uploadify({$jsonOptions});
+\$('#{$this->id}').uploadify({$jsonOptions});
 EOF;
         $this->view->registerJs($script, View::POS_READY);
     }
