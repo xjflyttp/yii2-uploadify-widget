@@ -169,7 +169,7 @@ class Uploadify extends InputWidget {
         $script = <<<EOF
 $('#{$this->id}').uploadify({$jsonOptions});
 EOF;
-        $this->view->registerJs($script, View::POS_READY);
+        $this->view->registerJs($script, View::POS_LOAD);
     }
 
 }

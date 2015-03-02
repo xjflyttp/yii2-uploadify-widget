@@ -5,7 +5,7 @@ composer.json
 -----
 ```json
 "require": {
-        "xj/yii2-uploadify-widget": "*"
+    "xj/yii2-uploadify-widget": "*"
 },
 ```
 
@@ -45,12 +45,7 @@ echo Uploadify::widget([
         console.log('The file ' + file.name + ' could not be uploaded: ' + errorString + errorCode + errorMsg);
     }",
         'onUploadSuccess' => "function(file, data, response) {
-            data = JSON.parse(data);
-            if (data.error) {
-                console.log(data.msg);
-            } else {
-                console.log(data.fileUrl);
-            }
+        console.log('The file ' + file.name + ' was successfully uploaded with a response of ' + response + ':' + data);
     }"
     ]
 ]);
@@ -66,23 +61,24 @@ public function actions() {
             'uploadBasePath' => '@webroot/upload', //file system path
             'uploadBaseUrl' => '@web/upload', //web path
             'csrf' => true,
-            'autoOutput' => true, //output fileUrl
             'format' => 'image/{yyyy}{mm}{dd}/{time}{rand:6}', //save format
             'validateOptions' => [
                 'extensions' => ['jpg', 'png'],
                 'maxSize' => 1 * 1024 * 1024, //file size
             ],
-            'beforeValidate' => function($actionObject) {},
-            'afterValidate' => function($actionObject) {},
-            'beforeSave' => function($actionObject) {},
-            'afterSave' => function($actionObject) {
-                /* @var $actionObject xj\uploadify\UploadAction */
-
-                $filename = $actionObject->saveFilename;
-                /* @var $filename string 'image/yyyymmddtimerand.jpg' */
-
-                $fullFilename = $actionObject->saveFullFilename;
-                /* @var $fullFilename string '/var/www/htdocs/image/yyyymmddtimerand.jpg' */
+            'beforeValidate' => function($action) {
+                /* @var $action xj\uploadify\UploadAction */
+            },
+            'afterValidate' => function($action) {
+                /* @var $action xj\uploadify\UploadAction */
+            },
+            'beforeSave' => function($action) {
+                /* @var $action xj\uploadify\UploadAction */
+            },
+            'afterSave' => function($action) {
+                /* @var $action xj\uploadify\UploadAction */
+                //$action->filename;  //   image/yyyymmdd/xxx.jpg
+                //$action->$fullFilename //  /var/www/htdocs/image/yyyymmddtimerand.jpg
             },
         ],
     ];
