@@ -23,11 +23,16 @@ echo Uploadify::widget([
         'width' => 120,
         'height' => 40,
         'onUploadError' => "function(file, errorCode, errorMsg, errorString) {
-        console.log('The file ' + file.name + ' could not be uploaded: ' + errorString + errorCode + errorMsg);
-    }",
+            console.log('The file ' + file.name + ' could not be uploaded: ' + errorString + errorCode + errorMsg);
+        }",
         'onUploadSuccess' => "function(file, data, response) {
-        console.log('The file ' + file.name + ' was successfully uploaded with a response of ' + response + ':' + data);
-    }"
+            data = JSON.parse(data);
+            if (data.error) {
+                console.log(data.msg);
+            } else {
+                console.log(data.fileUrl);
+            }
+        }"
     ]
 ]);
 
