@@ -244,7 +244,7 @@ class UploadAction extends Action {
      * @return string
      */
     private function getSaveFileName() {
-        if (is_callable($this->format)) {
+        if (is_callable($this->format) || is_array($this->format)) {
             return call_user_func($this->format, $this);
         }
         //替换日期事件
