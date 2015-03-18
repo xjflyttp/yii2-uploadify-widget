@@ -66,7 +66,14 @@ public function actions() {
             'uploadBasePath' => '@webroot/upload', //file system path
             'uploadBaseUrl' => '@web/upload', //web path
             'csrf' => true,
-            'format' => 'image/{yyyy}{mm}{dd}/{time}{rand:6}', //save format
+//            'format' => 'image/{yyyy}{mm}{dd}/{time}{rand:6}', // OR Closure
+            'format' => function(UploadAction $action) {
+                $fileext = $action->uploadFileInstance->getExtension();
+                $filehash = sha1(uniqid() . time());
+                $p1 = substr($filehash, 0, 2);
+                $p2 = substr($filehash, 2, 2);
+                return "{$p1}/{$p2}/{$filehash}.{$fileext}";
+            },
             'validateOptions' => [
                 'extensions' => ['jpg', 'png'],
                 'maxSize' => 1 * 1024 * 1024, //file size

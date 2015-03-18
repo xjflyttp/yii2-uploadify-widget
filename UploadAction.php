@@ -74,7 +74,7 @@ class UploadAction extends Action {
       {ii} 会替换成两位分钟
       {ss} 会替换成两位秒
       非法字符 \ : * ? " < > |
-     * @var string
+     * @var string | Closure
      */
     public $format = '{yyyy}{mm}{dd}/{time}{rand:6}';
 
@@ -244,6 +244,9 @@ class UploadAction extends Action {
      * @return string
      */
     private function getSaveFileName() {
+        if (is_callable($this->format)) {
+            return call_user_func($this->format, $this);
+        }
         //替换日期事件
         $t = time();
         $d = explode('-', date("Y-y-m-d-H-i-s"));
