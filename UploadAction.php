@@ -9,43 +9,21 @@ use yii\web\UploadedFile;
 use yii\base\Exception;
 
 /**
- * Uploadify Widget Action
  * @author xjflyttp <xjflyttp@gmail.com>
- * @example
-  Html::fileInput('test', NULL, ['id' => 'test']);
-  Uploadify::widget([
-  'url' => yii\helpers\Url::to(['s-upload']),
-  'id' => 'test',
-  'model' => $model,
-  'renderTag' => false,
-  'jsOptions' => [
-  'width' => 120,
-  'height' => 40,
-  'onUploadError' => "function(file, errorCode, errorMsg, errorString) {
-  console.log('The file ' + file.name + ' could not be uploaded: ' + errorString + errorCode + errorMsg);
-  }",
-  'onUploadSuccess' => "function(file, data, response) {
-  console.log('The file ' + file.name + ' was successfully uploaded with a response of ' + response + ':' + data);
-  }"
-  ]
-  ]);
  */
-class UploadAction extends Action {
+class UploadAction extends Action
+{
 
-    /**
-     * The length of the CSRF token mask.
-     */
-    const CSRF_MASK_LENGTH = 8;
 
     /**
      * save path
-     * @var string 
+     * @var string
      */
     public $uploadBasePath = '@webroot/upload';
 
     /**
      * web url
-     * @var string 
+     * @var string
      */
     public $uploadBaseUrl = '@web/upload';
 
@@ -63,17 +41,17 @@ class UploadAction extends Action {
 
     /**
      *
-      {filename} 会替换成原文件名,配置这项需要注意中文乱码问题
-      {rand:6} 会替换成随机数,后面的数字是随机数的位数
-      {time} 会替换成时间戳
-      {yyyy} 会替换成四位年份
-      {yy} 会替换成两位年份
-      {mm} 会替换成两位月份
-      {dd} 会替换成两位日期
-      {hh} 会替换成两位小时
-      {ii} 会替换成两位分钟
-      {ss} 会替换成两位秒
-      非法字符 \ : * ? " < > |
+     * {filename} 会替换成原文件名,配置这项需要注意中文乱码问题
+     * {rand:6} 会替换成随机数,后面的数字是随机数的位数
+     * {time} 会替换成时间戳
+     * {yyyy} 会替换成四位年份
+     * {yy} 会替换成两位年份
+     * {mm} 会替换成两位月份
+     * {dd} 会替换成两位日期
+     * {hh} 会替换成两位小时
+     * {ii} 会替换成两位分钟
+     * {ss} 会替换成两位秒
+     * 非法字符 \ : * ? " < > |
      * @var string | Closure
      */
     public $format = '{yyyy}{mm}{dd}/{time}{rand:6}';
@@ -99,7 +77,7 @@ class UploadAction extends Action {
     /**
      * saved format filename
      * image/yyyymmdd/xxx.jpg
-     * @var string 
+     * @var string
      */
     public $filename;
 
@@ -144,7 +122,8 @@ class UploadAction extends Action {
      */
     public $output = ['error' => false];
 
-    public function init() {
+    public function init()
+    {
         //csrf
         $this->initCsrf();
 
@@ -163,7 +142,8 @@ class UploadAction extends Action {
         return parent::init();
     }
 
-    public function run() {
+    public function run()
+    {
         try {
             if ($this->uploadFileInstance === null) {
                 throw new Exception('upload not exist');
@@ -194,7 +174,8 @@ class UploadAction extends Action {
         return $this->output;
     }
 
-    private function save() {
+    private function save()
+    {
         $filename = $this->getSaveFileNameWithNotExist();
         $basePath = $this->uploadBasePath;
         $fullFilename = $basePath . '/' . $filename;
@@ -216,14 +197,16 @@ class UploadAction extends Action {
     /**
      * output fileUrl
      */
-    private function processOutput() {
+    private function processOutput()
+    {
         $this->output['fileUrl'] = $this->uploadBaseUrl . '/' . $this->filename;
     }
 
     /**
      * 取得没有碰撞的FileName
      */
-    private function getSaveFileNameWithNotExist() {
+    private function getSaveFileNameWithNotExist()
+    {
         $retryCount = 10;
         $currentCount = 0;
         $basePath = $this->uploadBasePath;
@@ -243,7 +226,8 @@ class UploadAction extends Action {
      * convert format property to string
      * @return string
      */
-    private function getSaveFileName() {
+    private function getSaveFileName()
+    {
         if (is_callable($this->format) || is_array($this->format)) {
             return call_user_func($this->format, $this);
         }
@@ -280,7 +264,8 @@ class UploadAction extends Action {
      * validate upload file
      * @throws Exception
      */
-    private function validate() {
+    private function validate()
+    {
         $file = $this->uploadFileInstance;
         $error = [];
         $validator = new FileValidator($this->validateOptions);
@@ -289,7 +274,8 @@ class UploadAction extends Action {
         }
     }
 
-    private function initCsrf() {
+    private function initCsrf()
+    {
         //verify csrf in session
         if (false === $this->csrf) {
             Yii::$app->request->enableCsrfValidation = false;

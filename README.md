@@ -59,10 +59,12 @@ echo Uploadify::widget([
 Action:
 ----
 ```php
+use xj\uploadify\UploadAction;
+
 public function actions() {
     return [
         's-upload' => [
-            'class' => \xj\uploadify\UploadAction::className(),
+            'class' => UploadAction::className(),
             'uploadBasePath' => '@webroot/upload', //file system path
             'uploadBaseUrl' => '@web/upload', //web path
             'csrf' => true,
@@ -78,17 +80,10 @@ public function actions() {
                 'extensions' => ['jpg', 'png'],
                 'maxSize' => 1 * 1024 * 1024, //file size
             ],
-            'beforeValidate' => function($action) {
-                /* @var $action xj\uploadify\UploadAction */
-            },
-            'afterValidate' => function($action) {
-                /* @var $action xj\uploadify\UploadAction */
-            },
-            'beforeSave' => function($action) {
-                /* @var $action xj\uploadify\UploadAction */
-            },
-            'afterSave' => function($action) {
-                /* @var $action xj\uploadify\UploadAction */
+            'beforeValidate' => function(UploadAction $action) {},
+            'afterValidate' => function(UploadAction $action) {},
+            'beforeSave' => function(UploadAction $action) {},
+            'afterSave' => function(UploadAction $action) {
                 //$action->filename;  //   image/yyyymmdd/xxx.jpg
                 //$action->$fullFilename //  /var/www/htdocs/image/yyyymmddtimerand.jpg
             },
