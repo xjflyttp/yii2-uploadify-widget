@@ -5,7 +5,7 @@ composer.json
 -----
 ```json
 "require": {
-    "xj/yii2-uploadify-widget": "*"
+    "xj/yii2-uploadify-widget": "~1.0.0"
 },
 ```
 
