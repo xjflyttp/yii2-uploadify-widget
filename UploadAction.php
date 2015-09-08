@@ -2,6 +2,7 @@
 
 namespace xj\uploadify;
 
+use Closure;
 use Yii;
 use yii\base\Action;
 use yii\validators\FileValidator;
@@ -14,47 +15,30 @@ use yii\base\Exception;
 class UploadAction extends Action
 {
 
-
     /**
-     * save path
+     * SavePath
      * @var string
      */
-    public $uploadBasePath = '@webroot/upload';
+    public $basePath = '@webroot/upload';
 
     /**
-     * web url
+     * WebUrl
      * @var string
      */
-    public $uploadBaseUrl = '@web/upload';
+    public $baseUrl = '@web/upload';
 
     /**
-     * Csrf Verify Enable
      * @var bool
      */
-    public $csrf = true;
+    public $enableCsrf = true;
 
     /**
-     *  $this->output['fileUrl'] = $this->uploadBaseUrl . '/' . $this->filename;
-     * @var bool
+     * @var array | Closure
+     * @example
+     * // [$object, 'methodName']
+     * // function(){}
      */
-    public $autoOutput = true;
-
-    /**
-     *
-     * {filename} 会替换成原文件名,配置这项需要注意中文乱码问题
-     * {rand:6} 会替换成随机数,后面的数字是随机数的位数
-     * {time} 会替换成时间戳
-     * {yyyy} 会替换成四位年份
-     * {yy} 会替换成两位年份
-     * {mm} 会替换成两位月份
-     * {dd} 会替换成两位日期
-     * {hh} 会替换成两位小时
-     * {ii} 会替换成两位分钟
-     * {ss} 会替换成两位秒
-     * 非法字符 \ : * ? " < > |
-     * @var string | Closure
-     */
-    public $format = '{yyyy}{mm}{dd}/{time}{rand:6}';
+    public $format;
 
     /**
      * file validator options
@@ -66,27 +50,34 @@ class UploadAction extends Action
      * 'extensions' => ['jpg', 'png']
      * ]
      */
-    public $validateOptions = [];
+    public $validateOptions;
 
     /**
-     * file instance
+     * @var string
+     */
+    public $postFieldName = 'Filedata';
+
+    /**
      * @var UploadedFile
      */
-    public $uploadFileInstance;
+    public $uploadfile;
 
     /**
-     * saved format filename
+     * Save Relative File Name
      * image/yyyymmdd/xxx.jpg
      * @var string
      */
     public $filename;
 
     /**
-     * saved format filename full path
-     * /var/www/htdocs/image/yyyymmdd/xxx.jpg
-     * @var string
+     * @var int
      */
-    public $fullFilename;
+    public $fileChmod = 0644;
+
+    /**
+     * @var int
+     */
+    public $dirChmod = 0755;
 
     /**
      * throw yii\base\Exception will break
@@ -117,52 +108,53 @@ class UploadAction extends Action
     public $afterSave;
 
     /**
-     * output
+     * OutputBuffer
      * @var []
      */
     public $output = ['error' => false];
 
+
     public function init()
     {
-        //csrf
         $this->initCsrf();
 
-        //upload instance
-        $this->uploadFileInstance = UploadedFile::getInstanceByName('Filedata');
+        if (empty($this->basePath)) {
+            throw new Exception('basePath not exist');
+        }
+        $this->basePath = Yii::getAlias($this->basePath);
 
-        //upload base path
-        if (empty($this->uploadBasePath)) {
-            throw new Exception('uploadBasePath not exist');
+        if (empty($this->baseUrl)) {
+            throw new Exception('baseUrl not exist');
         }
-        $this->uploadBasePath = Yii::getAlias($this->uploadBasePath);
-        //upload web url
-        if (!empty($this->uploadBaseUrl)) {
-            $this->uploadBaseUrl = Yii::getAlias($this->uploadBaseUrl);
+        $this->baseUrl = Yii::getAlias($this->baseUrl);
+
+        if (false === is_callable($this->format) && false === is_array($this->format)) {
+            throw new Exception('format is invalid');
         }
+
         return parent::init();
     }
 
     public function run()
     {
         try {
-            if ($this->uploadFileInstance === null) {
-                throw new Exception('upload not exist');
+            //instance uploadfile
+            $this->uploadfile = UploadedFile::getInstanceByName($this->postFieldName);
+            if (null === $this->uploadfile) {
+                throw new Exception("uploadfile {$this->postFieldName} not exist");
             }
-            if ($this->beforeValidate !== null) {
+
+            if (null !== $this->beforeValidate) {
                 call_user_func($this->beforeValidate, $this);
             }
             $this->validate();
-            if ($this->afterValidate !== null) {
+            if (null !== $this->afterValidate) {
                 call_user_func($this->afterValidate, $this);
             }
-            if ($this->beforeSave !== null) {
+            if (null !== $this->beforeSave) {
                 call_user_func($this->beforeSave, $this);
             }
             $this->save();
-            //auto output
-            if (true === $this->autoOutput) {
-                $this->processOutput();
-            }
             if ($this->afterSave !== null) {
                 call_user_func($this->afterSave, $this);
             }
@@ -174,42 +166,40 @@ class UploadAction extends Action
         return $this->output;
     }
 
-    private function save()
+    /**
+     * @throws Exception
+     */
+    protected function save()
     {
-        $filename = $this->getSaveFileNameWithNotExist();
-        $basePath = $this->uploadBasePath;
-        $fullFilename = $basePath . '/' . $filename;
-        $dirPath = dirname($fullFilename);
-        if (false === is_dir($dirPath)) {
-            if (false === mkdir($dirPath, 0755, true)) {
-                throw new Exception('mkdir fail: ' . $dirPath);
+        $filename = $this->getFilename();
+        $basePath = $this->basePath;
+        $saveFilename = $basePath . '/' . $filename;
+        $dirPath = dirname($saveFilename);
+        if (false === is_dir($dirPath) && false === file_exists($dirPath)) {
+            if (false === mkdir($dirPath, $this->dirChmod, true)) {
+                throw new Exception("Create Directory Fail: {$dirPath}");
             }
         }
-        $result = $this->uploadFileInstance->saveAs($fullFilename);
-        if (!$result) {
-            throw new Exception('save file fail');
+        $saveResult = $this->uploadfile->saveAs($saveFilename);
+        if (true === $saveResult) {
+            if (false === chmod($saveFilename, $this->fileChmod)) {
+                throw new Exception("SetChmod Fail: {$this->fileChmod} {$saveFilename}");
+            }
+        } else {
+            throw new Exception("SaveAsFile Fail: {$saveFilename}");
         }
-
-        $this->filename = $filename;
-        $this->fullFilename = $fullFilename;
-    }
-
-    /**
-     * output fileUrl
-     */
-    private function processOutput()
-    {
-        $this->output['fileUrl'] = $this->uploadBaseUrl . '/' . $this->filename;
     }
 
     /**
      * 取得没有碰撞的FileName
+     * @return string
+     * @throws Exception
      */
-    private function getSaveFileNameWithNotExist()
+    protected function getSaveFileNameWithNotExist()
     {
         $retryCount = 10;
         $currentCount = 0;
-        $basePath = $this->uploadBasePath;
+        $basePath = $this->basePath;
         $filename = '';
         do {
             ++$currentCount;
@@ -217,56 +207,29 @@ class UploadAction extends Action
             $filepath = $basePath . DIRECTORY_SEPARATOR . $filename;
         } while ($currentCount < $retryCount && file_exists($filepath));
         if ($currentCount == $retryCount) {
-            throw new Exception('file exist dump of ' . $currentCount . ' times');
+            throw new Exception(__FUNCTION__ . " try {$currentCount} times");
         }
         return $filename;
     }
 
     /**
-     * convert format property to string
      * @return string
+     * @throws Exception
      */
-    private function getSaveFileName()
+    protected function getSaveFileName()
     {
-        if (is_callable($this->format) || is_array($this->format)) {
-            return call_user_func($this->format, $this);
-        }
-        //替换日期事件
-        $t = time();
-        $d = explode('-', date("Y-y-m-d-H-i-s"));
-        $format = $this->format;
-        $format = str_replace("{yyyy}", $d[0], $format);
-        $format = str_replace("{yy}", $d[1], $format);
-        $format = str_replace("{mm}", $d[2], $format);
-        $format = str_replace("{dd}", $d[3], $format);
-        $format = str_replace("{hh}", $d[4], $format);
-        $format = str_replace("{ii}", $d[5], $format);
-        $format = str_replace("{ss}", $d[6], $format);
-        $format = str_replace("{time}", $t, $format);
-
-        $srcName = mb_substr($this->uploadFileInstance->name, 0, mb_strpos($this->uploadFileInstance->name, '.'));
-        $srcName = preg_replace("/[\|\?\"\<\>\/\*\\\\]+/", '', $srcName);
-        $format = str_replace("{filename}", $srcName, $format);
-
-        //替换随机字符串
-        $randNum = rand(1, 10000000000) . rand(1, 10000000000);
-        $matches = [];
-        if (preg_match("/\{rand\:([\d]*)\}/i", $format, $matches)) {
-            $randNumLength = substr($randNum, 0, $matches[1]);
-            $format = preg_replace("/\{rand\:[\d]*\}/i", $randNumLength, $format);
-        }
-
-        $ext = $this->uploadFileInstance->getExtension();
-        return $format . '.' . $ext;
+        return call_user_func($this->format, $this);
     }
 
     /**
-     * validate upload file
      * @throws Exception
      */
-    private function validate()
+    protected function validate()
     {
-        $file = $this->uploadFileInstance;
+        if (empty($this->validateOptions)) {
+            return;
+        }
+        $file = $this->uploadfile;
         $error = [];
         $validator = new FileValidator($this->validateOptions);
         if (!$validator->validate($file, $error)) {
@@ -274,14 +237,15 @@ class UploadAction extends Action
         }
     }
 
-    private function initCsrf()
+    /**
+     * setup session before check csrf
+     */
+    protected function initCsrf()
     {
-        //verify csrf in session
-        if (false === $this->csrf) {
-            Yii::$app->request->enableCsrfValidation = false;
+        Yii::$app->request->enableCsrfValidation = false;
+        if (false === $this->enableCsrf) {
             return;
         }
-        Yii::$app->request->enableCsrfValidation = false;
         Yii::$app->request->enableCsrfCookie = false;
 
         $session = Yii::$app->session;
@@ -300,4 +264,31 @@ class UploadAction extends Action
         $request->validateCsrfToken();
     }
 
+    /**
+     * @return string
+     * @throws Exception
+     */
+    public function getFilename()
+    {
+        if (null === $this->filename) {
+            $this->filename = $this->getSaveFileNameWithNotExist();
+        }
+        return $this->filename;
+    }
+
+    /**
+     * @return string
+     */
+    public function getSavePath()
+    {
+        return rtrim($this->basePath, '\\/') . '/' . $this->filename;
+    }
+
+    /**
+     * @return string
+     */
+    public function getWebUrl()
+    {
+        return rtrim($this->baseUrl, '\\/') . '/' . $this->filename;
+    }
 }
