@@ -1,7 +1,7 @@
-yii2-uploadify-widget
+# yii2-uploadify-widget
 ===
 
-composer.json
+## composer.json
 ---
 ```json
 "require": {
@@ -13,7 +13,46 @@ composer.json
 },
 ```
 
-example:
+## example:
+### version 2.0
+---
+```php
+//Remove Events Auto Convert
+
+use yii\web\JsExpression;
+
+//外部TAG
+echo Html::fileInput('test', NULL, ['id' => 'test']);
+echo Uploadify::widget([
+    'url' => yii\helpers\Url::to(['s-upload']),
+    'id' => 'test',
+    'csrf' => true,
+    'renderTag' => false,
+    'jsOptions' => [
+        'width' => 120,
+        'height' => 40,
+        'onUploadError' => new JsExpression(<<<EOF
+function(file, errorCode, errorMsg, errorString) {
+    console.log('The file ' + file.name + ' could not be uploaded: ' + errorString + errorCode + errorMsg);
+}
+EOF
+),
+        'onUploadSuccess' => new JsExpression(<<<EOF
+function(file, data, response) {
+    data = JSON.parse(data);
+    if (data.error) {
+        console.log(data.msg);
+    } else {
+        console.log(data.fileUrl);
+    }
+}
+EOF
+),
+    ]
+]);
+```
+
+### version 1.0
 ---
 ```php
 //外部TAG

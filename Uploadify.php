@@ -3,23 +3,23 @@
 namespace xj\uploadify;
 
 use Yii;
+use yii\base\InvalidConfigException;
 use yii\helpers\Json;
 use yii\helpers\Html;
 use yii\web\View;
 use yii\helpers\ArrayHelper;
-use yii\web\JsExpression;
 use yii\widgets\InputWidget;
-use xj\uploadify\UploadifyAsset;
 
 /**
  * Uploadify Widget
- *
+ * @author xjflyttp <xjflyttp@gmail.com>
  */
-class Uploadify extends InputWidget {
+class Uploadify extends InputWidget
+{
 
     /**
      * upload file to URL
-     * @var string 
+     * @var string
      * @example
      * http://xxxxx/upload.php
      * ['article/upload']
@@ -28,8 +28,7 @@ class Uploadify extends InputWidget {
     public $url;
 
     /**
-     * enable csrf verify
-     * @var bool 
+     * @var bool
      */
     public $csrf = true;
 
@@ -42,7 +41,7 @@ class Uploadify extends InputWidget {
     /**
      * uploadify js options
      * @var array
-     * @example 
+     * @example
      * [
      * 'height' => 30,
      * 'width' => 120,
@@ -54,30 +53,18 @@ class Uploadify extends InputWidget {
     public $jsOptions = [];
 
     /**
-     * uploadify javascript event list
-     * @var []
-     * @see http://www.uploadify.com/documentation/
+     * @var int
      */
-    public $events = [
-        'onCancel', 'onClearQueue', 'onDestroy', 'onDialogClose', 'onDialogOpen',
-        'onDisable', 'onEnable', 'onFallback', 'onInit', 'onQueueComplete',
-        'onSelect', 'onSelectError', 'onSWFReady', 'onUploadComplete',
-        'onUploadError', 'onUploadProgress', 'onUploadStart', 'onUploadSuccess',
-    ];
+    public $registerJsPos = View::POS_LOAD;
 
     /**
      * Initializes the widget.
      */
-    public function init() {
-
-        Yii::$app->request->enableCsrfValidation = $this->csrf;
-        if ($this->csrf) {
-            Yii::$app->request->enableCsrfCookie = false;
-        }
-
+    public function init()
+    {
         //init var
         if (empty($this->url)) {
-            $this->url = \yii\helpers\Url::to('index');
+            throw new InvalidConfigException('Url must be set');
         }
         if (empty($this->id)) {
             $this->id = $this->hasModel() ? Html::getInputId($this->model, $this->attribute) : $this->getId();
@@ -87,11 +74,11 @@ class Uploadify extends InputWidget {
             $this->name = $this->hasModel() ? Html::getInputName($this->model, $this->attribute) : $this->id;
         }
 
-        //register js css
+        //register Assets
         $assets = UploadifyAsset::register($this->view);
 
-        //init options
-        $this->initUploadifyOptions($assets);
+        $this->initOptions($assets);
+        $this->initCsrfOption();
 
         parent::init();
     }
@@ -99,7 +86,8 @@ class Uploadify extends InputWidget {
     /**
      * Renders the widget.
      */
-    public function run() {
+    public function run()
+    {
         $this->registerScripts();
         if ($this->renderTag === true) {
             echo $this->renderTag();
@@ -111,65 +99,68 @@ class Uploadify extends InputWidget {
      * @param [] $assets
      * @return void
      */
-    private function initUploadifyOptions($assets) {
+    protected function initOptions($assets)
+    {
         $baseUrl = $assets->baseUrl;
 
         $this->jsOptions['uploader'] = $this->url;
         $this->jsOptions['swf'] = $baseUrl . '/uploadify.swf';
 
-        //csrf options
-        if ($this->csrf) {
-            $this->initUploadifyCsrfOption($this->jsOptions);
-        }
-
-        /**
-         * JsExpression convert
-         */
-        foreach ($this->jsOptions as $key => $val) {
-            if (in_array($key, $this->events) && !($val instanceof JsExpression)) {
-                $this->jsOptions[$key] = new JsExpression($val);
-            }
-        }
     }
 
     /**
-     * uploadify csrf options
-     * 
-     * @param type $jsOptions
      * @return void
      */
-    private function initUploadifyCsrfOption(&$jsOptions) {
+    protected function initCsrfOption()
+    {
+        if (false === $this->csrf) {
+            return;
+        }
         $request = Yii::$app->request;
-        $csrfName = $request->csrfParam;
-        $csrfValue = $request->csrfToken;
-
+        $request->enableCsrfValidation = true;
+        $csrfParam = $request->csrfParam;
+        $csrfValue = $request->getCsrfToken();
         $session = Yii::$app->session;
         $session->open();
+
+        //write csrfValue to session
+        if ($request->enableCookieValidation) {
+            $cookieCsrfValue = Yii::$app->getRequest()->getCookies()->getValue($csrfParam);
+            if (null === $cookieCsrfValue) {
+                $cookieCsrfValue = Yii::$app->getResponse()->getCookies()->getValue($csrfParam);
+            }
+            $session->set($csrfParam, $cookieCsrfValue);
+        }
+
         $sessionIdName = $session->getName();
         $sessionIdValue = $session->getId();
-        $jsOptions['formData'] = [
-            $sessionIdName => $sessionIdValue,
-            $csrfName => $csrfValue,
-        ];
+        $this->jsOptions = ArrayHelper::merge($this->jsOptions, [
+            'formData' => [
+                $sessionIdName => $sessionIdValue,
+                $csrfParam => $csrfValue,
+            ]
+        ]);
     }
 
     /**
      * render file input tag
      * @return string
      */
-    private function renderTag() {
+    protected function renderTag()
+    {
         return Html::fileInput($this->name, null, $this->options);
     }
 
     /**
      * register script
      */
-    private function registerScripts() {
+    protected function registerScripts()
+    {
         $jsonOptions = Json::encode($this->jsOptions);
         $script = <<<EOF
 \$('#{$this->id}').uploadify({$jsonOptions});
 EOF;
-        $this->view->registerJs($script, View::POS_LOAD);
+        $this->view->registerJs($script, $this->registerJsPos);
     }
 
 }

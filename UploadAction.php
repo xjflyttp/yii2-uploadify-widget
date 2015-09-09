@@ -242,26 +242,20 @@ class UploadAction extends Action
      */
     protected function initCsrf()
     {
-        Yii::$app->request->enableCsrfValidation = false;
+        $session = Yii::$app->session;
+        $request = Yii::$app->request;
+        $request->enableCsrfValidation = $this->enableCsrf;
         if (false === $this->enableCsrf) {
             return;
         }
-        Yii::$app->request->enableCsrfCookie = false;
-
-        $session = Yii::$app->session;
-        $request = Yii::$app->request;
-//        $csrfTokenName = $request->csrfParam;
-        $session->open();
+        $request->enableCsrfCookie = false; //enforce use session csrf
         $sessionName = $session->getName();
         $postSessionId = $request->post($sessionName);
-        $currentSessionId = $session->getId();
-        if ($currentSessionId != $postSessionId) {
-            $session->destroy();
+        if ($session->getIsActive()) {
+            $session->close();
         }
         $session->setId($postSessionId);
         $session->open();
-        $request->enableCsrfValidation = true;
-        $request->validateCsrfToken();
     }
 
     /**
