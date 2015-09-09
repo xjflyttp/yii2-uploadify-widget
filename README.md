@@ -117,7 +117,7 @@ public function actions() {
             'uploadBaseUrl' => '@web/upload', //web path
             'csrf' => true,
 //            'format' => 'image/{yyyy}{mm}{dd}/{time}{rand:6}', // OR Closure
-            'format' => function(UploadAction $action) {
+            'format' => function(\xj\uploadify\UploadAction $action) {
                 $fileext = $action->uploadFileInstance->getExtension();
                 $filehash = sha1(uniqid() . time());
                 $p1 = substr($filehash, 0, 2);
