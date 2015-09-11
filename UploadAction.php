@@ -5,7 +5,9 @@ namespace xj\uploadify;
 use Closure;
 use Yii;
 use yii\base\Action;
+use yii\helpers\VarDumper;
 use yii\validators\FileValidator;
+use yii\web\HttpException;
 use yii\web\UploadedFile;
 use yii\base\Exception;
 
@@ -237,25 +239,22 @@ class UploadAction extends Action
         }
     }
 
-    /**
-     * setup session before check csrf
-     */
     protected function initCsrf()
     {
-        $session = Yii::$app->session;
-        $request = Yii::$app->request;
-        $request->enableCsrfValidation = $this->enableCsrf;
+        $session = Yii::$app->getSession();
+        $request = Yii::$app->getRequest();
         if (false === $this->enableCsrf) {
             return;
         }
-        $request->enableCsrfCookie = false; //enforce use session csrf
+        $request->enableCsrfValidation = true;
+        $request->enableCsrfCookie = false; //verify with session
         $sessionName = $session->getName();
         $postSessionId = $request->post($sessionName);
-        if ($session->getIsActive()) {
-            $session->close();
+        if ($postSessionId != $session->getId()) {
+            $session->destroy();
+            $session->setId($postSessionId);
+            $session->open();
         }
-        $session->setId($postSessionId);
-        $session->open();
     }
 
     /**
