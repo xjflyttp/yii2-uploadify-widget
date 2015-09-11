@@ -72,6 +72,11 @@ class UploadAction extends Action
     public $filename;
 
     /**
+     * @var bool
+     */
+    public $overwriteIfExist = false;
+
+    /**
      * @var int
      */
     public $fileChmod = 0644;
@@ -264,7 +269,11 @@ class UploadAction extends Action
     public function getFilename()
     {
         if (null === $this->filename) {
-            $this->filename = $this->getSaveFileNameWithNotExist();
+            if ($this->overwriteIfExist) {
+                $this->filename = $this->getSaveFileName();
+            } else {
+                $this->filename = $this->getSaveFileNameWithNotExist();
+            }
         }
         return $this->filename;
     }

@@ -114,7 +114,18 @@ public function actions() {
             'baseUrl' => '@web/upload',
             'enableCsrf' => true, // default
             'postFieldName' => 'Filedata', // default
-            'format' => [$this, 'methodName'], // choose one
+            //BEGIN METHOD
+            'format' => [$this, 'methodName'], 
+            //END METHOD
+            //BEGIN CLOSURE BY-HASH
+            'overwriteIfExist' => true,
+            'format' => function (UploadAction $action) {
+                $fileext = $action->uploadfile->getExtension();
+                $filename = sha1_file($action->uploadfile->tempName);
+                return "{$filename}.{$fileext}";
+            },
+            //END CLOSURE BY-HASH
+            //BEGIN CLOSURE BY TIME
             'format' => function (UploadAction $action) {
                 $fileext = $action->uploadfile->getExtension();
                 $filehash = sha1(uniqid() . time());
@@ -122,6 +133,7 @@ public function actions() {
                 $p2 = substr($filehash, 2, 2);
                 return "{$p1}/{$p2}/{$filehash}.{$fileext}";
             },
+            //END CLOSURE BY TIME
             'validateOptions' => [
                 'extensions' => ['jpg', 'png'],
                 'maxSize' => 1 * 1024 * 1024, //file size
