@@ -115,15 +115,15 @@ public function actions() {
             'enableCsrf' => true, // default
             'postFieldName' => 'Filedata', // default
             //BEGIN METHOD
-            'format' => [$this, 'methodName'], 
+            //'format' => [$this, 'methodName'], 
             //END METHOD
             //BEGIN CLOSURE BY-HASH
             'overwriteIfExist' => true,
-            'format' => function (UploadAction $action) {
-                $fileext = $action->uploadfile->getExtension();
-                $filename = sha1_file($action->uploadfile->tempName);
-                return "{$filename}.{$fileext}";
-            },
+            //'format' => function (UploadAction $action) {
+            //    $fileext = $action->uploadfile->getExtension();
+            //    $filename = sha1_file($action->uploadfile->tempName);
+            //    return "{$filename}.{$fileext}";
+            //},
             //END CLOSURE BY-HASH
             //BEGIN CLOSURE BY TIME
             'format' => function (UploadAction $action) {
@@ -144,10 +144,10 @@ public function actions() {
             'afterValidate' => function (UploadAction $action) {},
             'beforeSave' => function (UploadAction $action) {},
             'afterSave' => function (UploadAction $action) {
-                $action->output['fileUrl'] = $action->getWebUrl();
-                $action->getFilename(); // "image/yyyymmddtimerand.jpg"
-                $action->getWebUrl(); //  "baseUrl + filename, /upload/image/yyyymmddtimerand.jpg"
-                $action->getSavePath(); // "/var/www/htdocs/upload/image/yyyymmddtimerand.jpg"
+                $action->output['fileUrl'] = \yii\helpers\Url::base(true).$action->getWebUrl();//四哥许坤:下面跟了另外三种可以替换的信息,根据需要修改.如果想获取更多信息,可以参考下面
+                //$action->output['filename'] = $action->getFilename(); // "image/yyyymmddtimerand.jpg"
+                //$action->output['webUrl'] = $action->getWebUrl(); //  "baseUrl + filename, /upload/image/yyyymmddtimerand.jpg"
+                //$action->output['savePath'] = $action->getSavePath(); // "/var/www/htdocs/upload/image/yyyymmddtimerand.jpg"
             },
         ],
     ];
