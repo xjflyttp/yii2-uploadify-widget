@@ -190,3 +190,36 @@ public function actions() {
     ];
 }
 ```
+
+
+(四哥许坤)以下是个人使用的一个案例:
+```php
+echo $form->field($model, 'image')->widget(xj\uploadify\Uploadify::className(), [
+    'url'       => yii\helpers\Url::to(['s-upload']),
+    'csrf'      => true,
+    'renderTag' => true,
+    'jsOptions' => [
+        'width'           => 120,
+        'height'          => 40,
+        'buttonText'      => '选择文件',
+        'buttonClass'=>'bg-primary',
+        'onUploadError'   => new JsExpression(<<<EOF
+function(file, errorCode, errorMsg, errorString) {
+    console.log('The file ' + file.name + ' could not be uploaded: ' + errorString + errorCode + errorMsg);
+}
+EOF
+        ),
+        'onUploadSuccess' => new JsExpression(<<<EOF
+function(file, data, response) {
+    data = JSON.parse(data);
+    if (data.error) {
+        console.log(data.msg);
+    } else {
+        console.log(data.fileUrl);
+    }
+}
+EOF
+        ),
+    ]
+]);
+```
